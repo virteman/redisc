@@ -197,24 +197,28 @@ func (p *PipeConn) runBatches() {
 	case 0:
 		return
 	case 1:
-		p.batches[0].run(p)
+		bt := p.batches[0]
+		bt.run(p)
+		bt.cmds = bt.cmds[:0]
+		if bt.conn != nil {
+			bt.conn.Close()
+		}
 	default:
 		var wg sync.WaitGroup
 		wg.Add(l)
 		for _, bt := range p.batches {
 			go func(bt batch) {
-				defer wg.Done()
+				defer func() {
+					bt.cmds = bt.cmds[:0]
+					if bt.conn != nil {
+						bt.conn.Close()
+					}
+					wg.Done()
+				}()
 				bt.run(p)
 			}(bt)
 		}
 		wg.Wait()
-	}
-
-	for _, bt := range p.batches {
-		bt.cmds = bt.cmds[:0]
-		if bt.conn != nil {
-			bt.conn.Close()
-		}
 	}
 
 	p.batches = p.batches[:0]
