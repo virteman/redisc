@@ -279,20 +279,20 @@ func (c *Cluster) getClusterSlots(addr string) ([]slotMapping, error) {
 }
 
 func (c *Cluster) getConnForAddr(addr string, forceDial bool) (redis.Conn, error) {
-	c.mu.Lock()
+	c.mu.RLock()
 
 	if err := c.err; err != nil {
-		c.mu.Unlock()
+		c.mu.RUnlock()
 		return nil, err
 	}
 	if c.CreatePool == nil || forceDial {
-		c.mu.Unlock()
+		c.mu.RUnlock()
 		return redis.Dial("tcp", addr, c.DialOptions...)
 	}
 
 	p := c.pools[addr]
 	if p == nil {
-		c.mu.Unlock()
+		c.mu.RUnlock()
 		pool, err := c.CreatePool(addr, c.DialOptions...)
 		if err != nil {
 			return nil, err
@@ -313,8 +313,10 @@ func (c *Cluster) getConnForAddr(addr string, forceDial bool) (redis.Conn, error
 			// nil.
 			defer pool.Close()
 		}
+		c.mu.Unlock()
+	} else {
+		c.mu.RUnlock()
 	}
-	c.mu.Unlock()
 
 	return c.getFromPool(p)
 }
@@ -336,9 +338,10 @@ func (c *Cluster) getFromPool(p *redis.Pool) (redis.Conn, error) {
 var errNoNodeForSlot = errors.New("redisc: no node for slot")
 
 func (c *Cluster) getConnForSlot(slot int, forceDial, readOnly bool) (redis.Conn, string, error) {
-	c.mu.Lock()
+	c.mu.RLock()
 	addrs := c.mapping[slot]
-	c.mu.Unlock()
+	c.mu.RUnlock()
+
 	if len(addrs) == 0 {
 		return nil, "", errNoNodeForSlot
 	}
@@ -445,9 +448,9 @@ func (c *Cluster) getNodeAddrs(preferReplicas bool) (addrs []string, replicas bo
 // connection will not be managed by the pool, even if CreatePool is set. The
 // actual returned type is *Conn, see its documentation for details.
 func (c *Cluster) Dial() (redis.Conn, error) {
-	c.mu.Lock()
+	c.mu.RLock()
 	err := c.err
-	c.mu.Unlock()
+	c.mu.RUnlock()
 
 	if err != nil {
 		return nil, err
@@ -463,9 +466,9 @@ func (c *Cluster) Dial() (redis.Conn, error) {
 // on the cluster. The application must close the returned connection. The
 // actual returned type is *Conn, see its documentation for details.
 func (c *Cluster) Get() redis.Conn {
-	c.mu.Lock()
+	c.mu.RLock()
 	err := c.err
-	c.mu.Unlock()
+	c.mu.RUnlock()
 
 	return &Conn{
 		cluster: c,
@@ -475,9 +478,9 @@ func (c *Cluster) Get() redis.Conn {
 
 // GetPipeline returns a Conn interface that can handle Redis Pipeline
 func (c *Cluster) GetPipeline(options ...PipeOption) redis.Conn {
-	c.mu.Lock()
+	c.mu.RLock()
 	err := c.err
-	c.mu.Unlock()
+	c.mu.RUnlock()
 
 	var po pipeOptions
 

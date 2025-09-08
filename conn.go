@@ -156,8 +156,12 @@ func cmdKey(command string, args []interface{}) (key string, err error) {
 		index = 2
 	}
 
+	var ok bool
 	if len(args) > index {
-		key = fmt.Sprintf("%s", args[index])
+		if key, ok = args[index].(string); !ok {
+			err = fmt.Errorf("can not get key from args %v", args[index])
+		}
+		// key = fmt.Sprintf("%s", args[index])
 	} else {
 		err = errors.New("can not get key from args")
 	}

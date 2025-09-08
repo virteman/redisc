@@ -23,53 +23,69 @@ func Slot(key string) int {
 //	for _, keys := range bySlot {
 //	  // keys is a list of keys that belong to the same slot
 //	}
-func SplitBySlot(keys ...string) [][]string {
-	var slots []int
-	m := make(map[int][]string)
+func SplitBySlot(keys []string) (groups [][]string) {
+
+	slots := requireInts()
+	defer func() {
+		releaseInts(slots)
+	}()
+
+	groups = requireSliceStrings()
+
+Next:
 	for _, k := range keys {
 		slot := Slot(k)
-		_, ok := m[slot]
-		m[slot] = append(m[slot], k)
 
-		if !ok {
-			slots = append(slots, slot)
+		for i, s := range slots {
+			if s == slot {
+				groups[i] = append(groups[i], k)
+				continue Next
+			}
 		}
+
+		slots = append(slots, slot)
+		groups = append(groups, append(requireStrings(), k))
 	}
 
-	sort.Ints(slots)
-	bySlot := make([][]string, 0, len(m))
-	for _, slot := range slots {
-		bySlot = append(bySlot, m[slot])
-	}
-	return bySlot
+	sort.Slice(groups, func(i, j int) bool {
+		if slots[i] < slots[j] {
+			slots[i], slots[j] = slots[j], slots[i]
+			return true
+		}
+		return false
+	})
+
+	return groups
 }
 
-func SplitByNode(c *Cluster, keys ...string) [][]string {
-	slots := SplitBySlot(keys...)
+func SplitByNode(c *Cluster, keys []string) [][]string {
+	groups := SplitBySlot(keys)
+	defer releaseSliceStrings(groups)
 
-	c.mu.Lock()
-	err := c.err
-	mapping := c.mapping
-	c.mu.Unlock()
+	return SplitByNodeWithSlot(c, groups)
+}
 
-	if err != nil {
-		return slots
-	}
-
-	byNode := make([][]string, 0, len(slots))
+func SplitByNodeWithSlot(c *Cluster, groups [][]string) [][]string {
+	nodes := requireSliceStrings()
 	m := make(map[string][]string)
-	for _, slot := range slots {
-		s := Slot(slot[0])
-		if len(mapping[s]) > 0 {
-			m[mapping[s][0]] = append(m[mapping[s][0]], slot...)
+
+	for _, group := range groups {
+		s := Slot(group[0])
+
+		c.mu.RLock()
+		mapping := c.mapping[s]
+		c.mu.RUnlock()
+
+		if len(mapping) > 0 {
+			m[mapping[0]] = append(m[mapping[0]], group...)
 		} else {
-			byNode = append(byNode, slot)
+			nodes = append(nodes, group)
 		}
 	}
 
 	for _, v := range m {
-		byNode = append(byNode, v)
+		nodes = append(nodes, v)
 	}
 
-	return byNode
+	return nodes
 }

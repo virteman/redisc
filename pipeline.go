@@ -126,7 +126,9 @@ func (p *PipeConn) buildBatches() error {
 		return nil
 	}
 
-	keys := make([]string, 0, len(cmds))
+	keys := requireStrings()
+	defer releaseStrings(keys)
+
 	for _, v := range cmds {
 		key, err := cmdKey(v.command, v.args)
 		if err != nil {
@@ -135,14 +137,21 @@ func (p *PipeConn) buildBatches() error {
 		keys = append(keys, key)
 	}
 
-	byNode := SplitByNode(p.cluster, keys...)
-	if p.batches == nil {
-		p.batches = make([]batch, 0, len(byNode))
+	slots := SplitBySlot(keys)
+	defer releaseSliceStrings(slots)
+
+	if p.transaction && len(slots) > 1 {
+		return errors.New("keys must be one slot in transaction mode")
 	}
 
-	for _, node := range byNode {
-		var bt batch
-		for _, key := range node {
+	groups := SplitByNodeWithSlot(p.cluster, slots)
+	defer releaseSliceStrings(groups)
+
+	for _, group := range groups {
+		bt := batch{
+			cmds: requireInts(),
+		}
+		for _, key := range group {
 			for i, k := range keys {
 				if key == k {
 					bt.cmds = append(bt.cmds, i+p.send)
@@ -152,18 +161,6 @@ func (p *PipeConn) buildBatches() error {
 			}
 		}
 		p.batches = append(p.batches, bt)
-	}
-
-	if p.transaction {
-		switch len(p.batches) {
-		case 1:
-			if len(SplitBySlot(byNode[0]...)) == 1 {
-				break
-			}
-			fallthrough
-		default:
-			return errors.New("keys must be one slot in transaction mode")
-		}
 	}
 
 	return nil
@@ -304,6 +301,12 @@ func (p *PipeConn) Close() error {
 func (p *PipeConn) Flush() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	p.batches = requireBatches()
+	defer func() {
+		releaseBatches(p.batches)
+		p.batches = nil
+	}()
 
 	if err := p.buildBatches(); err != nil {
 		return err

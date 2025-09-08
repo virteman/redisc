@@ -62,7 +62,7 @@ func TestSplitBySlot(t *testing.T) {
 		if c.in == "" {
 			args = nil
 		}
-		got := SplitBySlot(args...)
+		got := SplitBySlot(args)
 
 		exp := make([][]string, len(c.out))
 		for i, o := range c.out {
@@ -98,7 +98,7 @@ func TestSplitByNode(t *testing.T) {
 		if c.in == "" {
 			args = nil
 		}
-		got := SplitByNode(cluster, args...)
+		got := SplitByNode(cluster, args)
 
 		exp := make([][]string, len(c.out))
 		for i, o := range c.out {

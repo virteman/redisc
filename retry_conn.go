@@ -76,9 +76,9 @@ func (rc *retryConn) do(cmd string, args ...interface{}) (interface{}, error) {
 			// that's not the case, then keep the readonly flag to true, meaning that
 			// it will attempt a connection
 			// to a replica for the new slot.
-			cluster.mu.Lock()
+			cluster.mu.RLock()
 			slotMappings := cluster.mapping[re.NewSlot]
-			cluster.mu.Unlock()
+			cluster.mu.RUnlock()
 			if isIn(slotMappings, connAddr) {
 				readOnly = false
 			}
