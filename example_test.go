@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/ljfuyuan/redisc"
+	"github.com/virteman/redisc"
 )
 
 // Create and use a cluster.

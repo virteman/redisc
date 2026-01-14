@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/ljfuyuan/redisc/redistest"
-	"github.com/ljfuyuan/redisc/redistest/resp"
+	"github.com/virteman/redisc/redistest"
+	"github.com/virteman/redisc/redistest/resp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

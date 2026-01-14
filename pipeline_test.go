@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/ljfuyuan/redisc/redistest"
+	"github.com/virteman/redisc/redistest"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,4 +1,4 @@
-module github.com/ljfuyuan/redisc
+module github.com/virteman/redisc
 
 go 1.20
 

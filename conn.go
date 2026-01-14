@@ -171,13 +171,23 @@ func cmdKey(command string, args []interface{}) (key string, err error) {
 // BindConn is a convenience function that checks if c implements a Bind method
 // with the right signature such as the one for a *Conn, and calls that method.
 // If c doesn't implement that method, it returns an error.
+var REDISC_ERR_NOBINDMETHOD = errors.New("redisc: no Bind method")
+
 func BindConn(c redis.Conn, keys ...string) error {
 	if cc, ok := c.(interface {
 		Bind(...string) error
 	}); ok {
 		return cc.Bind(keys...)
 	}
-	return errors.New("redisc: no Bind method")
+	return REDISC_ERR_NOBINDMETHOD
+}
+
+// 兼容纯redis conn的连接key绑定
+func BindConnKind(c redis.Conn, keys ...string) (err error) {
+	if err = BindConn(c, keys...); err == REDISC_ERR_NOBINDMETHOD {
+		err = nil
+	}
+	return
 }
 
 // Bind binds the connection to the cluster node corresponding to the slot of

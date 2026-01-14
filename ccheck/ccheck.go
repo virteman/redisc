@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/ljfuyuan/redisc"
+	"github.com/virteman/redisc"
 )
 
 var (
